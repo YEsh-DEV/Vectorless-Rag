@@ -43,7 +43,7 @@ def find_node(nodes, target_id):
 def inspect_node(tree_file: Path, target_id: str):
     """Inspect full details of a specific node."""
     with open(tree_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        data = json.lo ad(f)
     tree = data.get("result", [])
     node = find_node(tree, target_id)
     if not node:
