@@ -64,9 +64,19 @@ def llm_tree_search(query: str, outline_text: str, model: str = DEFAULT_MODEL) -
     the top 1-3 most relevant section node IDs.
     """
     system_prompt = (
-        "You are an expert research librarian and deep learning specialist.\n"
-        "You analyze a technical book's Table of Contents outline to locate exact sections containing the answer.\n"
-        "You must respond ONLY with valid JSON."
+        "You are a Principal Deep Learning Scientist and Chief Research Librarian.\n"
+        "Your task is to analyze the hierarchical Table of Contents of François Chollet's textbook 'Deep Learning with Python' "
+        "and select the exact section node IDs that contain the direct, authoritative answer to the user's question.\n\n"
+        "REASONING PROTOCOL:\n"
+        "1. Identify Core Topic & Intent: Determine whether the question is about mathematical foundations, "
+        "model architectures (convnets, transformers, RNNs, VAEs, GANs), training dynamics (gradient descent, backpropagation), "
+        "or practical engineering (data augmentation, batch normalization, regularization).\n"
+        "2. Hierarchical Pruning: Identify the target Chapter, then traverse down into its specific Subsections.\n"
+        "3. Leaf-Node Preference: Always prefer specific leaf subsections (e.g. '9.3.2 Residual connections' [0127]) "
+        "over high-level chapter introductions (e.g. 'Advanced computer vision' [0120]), unless the query is broad.\n"
+        "4. Avoid False Positives: Do not select introductory overviews if a dedicated technical section exists later in the book.\n"
+        "5. Selection Bound: Choose between 1 and 3 most relevant node IDs.\n"
+        "6. Output: You must respond ONLY with valid JSON containing 'thinking' and 'node_list'."
     )
 
     user_prompt = f"""Examine the book outline below and determine which specific section node IDs most likely contain the answer to the user's question.
@@ -154,11 +164,16 @@ def generate_grounded_answer(query: str, retrieved_nodes: list, model: str = DEF
     full_context = "\n\n" + ("\n" + "-" * 50 + "\n").join(context_blocks)
 
     system_instruction = (
-        "You are an expert deep learning instructor. Answer the user's question using ONLY the provided textbook context.\n"
-        "Guidelines:\n"
-        "1. For every key point, formula, or concept you explain, explicitly cite the section title and page number in parentheses, e.g. (Section: '...', Page X).\n"
-        "2. Do not hallucinate or use external information outside the provided text.\n"
-        "3. Provide a clear, thorough, and technically accurate explanation with code or formulas if present in the text."
+        "You are an acclaimed Professor of Deep Learning, synthesizing an answer strictly from excerpts of François Chollet's textbook 'Deep Learning with Python'.\n\n"
+        "MANDATORY GUIDELINES:\n"
+        "1. STRICT GROUNDING: Use ONLY the provided textbook context. Do NOT extrapolate, hallucinate, or incorporate outside knowledge not present in the excerpt.\n"
+        "2. EXPLICIT CITATIONS: For every concept, formula, claim, or code sample you provide, append an explicit inline citation with the exact section title and page number in parentheses, e.g.: (Section: '<Section Title>', Page X) or (Section: '<Section Title>', Pages X-Y).\n"
+        "3. STRUCTURED PEDAGOGY: Structure your answer cleanly with Markdown headings:\n"
+        "   - **Core Overview**: High-level intuitive explanation of the concept.\n"
+        "   - **Technical Mechanics & Mathematics**: Step-by-step mathematical explanation, tensor transformations, or equations from the text.\n"
+        "   - **Code & Practical Implementation**: Explain or provide the relevant Keras/NumPy code patterns from the text.\n"
+        "   - **Practical Value / Why It Matters**: Why this technique is needed (e.g., mitigating vanishing gradients, preserving spatial hierarchies, stabilizing training).\n"
+        "4. TECHNICAL FIDELITY: Maintain exact mathematical notation and terminology as used in the textbook."
     )
 
     user_prompt = f"""Question: {query}
@@ -253,16 +268,42 @@ if __name__ == "__main__":
     default_tree = "trees/Deep_Learning_with_Python_tree.json"
 
     sample_queries = [
-        "How do residual connections work and why are they important?",
-        "What is self-attention and how does it compute representations in Transformers?",
-        "Explain the difference between Batch Normalization and standard normalization.",
-        "What is the convolution operation and how do convnets process visual patterns?"
+        {
+            "category": "Architectural Design (Computer Vision)",
+            "query": "How do residual connections work and why are they important in deep networks?"
+        },
+        {
+            "category": "Attention & NLP (Transformers)",
+            "query": "What is self-attention and how does it compute representations in Transformers?"
+        },
+        {
+            "category": "Training Dynamics & Optimization",
+            "query": "Explain the difference between Batch Normalization and standard feature scaling."
+        },
+        {
+            "category": "Computer Vision Foundations",
+            "query": "What is the convolution operation and how do convnets process visual patterns?"
+        },
+        {
+            "category": "Mathematical Foundations",
+            "query": "How does gradient descent and backpropagation work mathematically in neural networks?"
+        },
+        {
+            "category": "Generative Deep Learning",
+            "query": "What is the difference between Variational Autoencoders (VAEs) and Generative Adversarial Networks (GANs)?"
+        },
+        {
+            "category": "Overfitting & Generalization",
+            "query": "What strategies exist to prevent overfitting in deep neural networks?"
+        }
     ]
 
-    print("\n📚 Vectorless RAG Pipeline Ready!")
+    print("\n" + "=" * 65)
+    print("📚 VECTORLESS RAG ENGINE — DEEP LEARNING WITH PYTHON")
+    print("=" * 65)
     print("Choose an option:")
-    print("  [1] Run a sample question")
-    print("  [2] Ask your own custom question")
+    print("  [1] Pick from curated benchmark queries (1-7)")
+    print("  [2] Ask your own custom deep learning question")
     
     choice = input("\nEnter choice (1 or 2, default is 1): ").strip()
     
@@ -271,9 +312,11 @@ if __name__ == "__main__":
         if user_q:
             vectorless_rag(user_q, tree_path=default_tree)
     else:
-        print("\nAvailable Sample Queries:")
-        for idx, q in enumerate(sample_queries, 1):
-            print(f"  [{idx}] {q}")
-        q_idx = input(f"\nSelect query (1-{len(sample_queries)}, default is 1): ").strip()
-        selected_q = sample_queries[int(q_idx) - 1] if q_idx.isdigit() and 1 <= int(q_idx) <= len(sample_queries) else sample_queries[0]
-        vectorless_rag(selected_q, tree_path=default_tree)
+        print("\nAvailable Benchmark Queries:")
+        for idx, item in enumerate(sample_queries, 1):
+            print(f"  [{idx}] [{item['category']}]")
+            print(f"      Q: {item['query']}")
+        
+        q_idx = input(f"\nSelect query number (1-{len(sample_queries)}, default is 1): ").strip()
+        selected_item = sample_queries[int(q_idx) - 1] if q_idx.isdigit() and 1 <= int(q_idx) <= len(sample_queries) else sample_queries[0]
+        vectorless_rag(selected_item["query"], tree_path=default_tree)
